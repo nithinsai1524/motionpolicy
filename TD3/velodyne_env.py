@@ -431,11 +431,21 @@ class GazeboEnv:
         return False, False, min_laser
 
     @staticmethod
-    def get_reward(target, collision, action, min_laser):
+     def get_reward(target, collision, action, min_laser):
+        max_laser = 3.5 # maximum range of the laser sensor
+        goal_distance = 0.5 # distance from goal that is considered a success
+        
         if target:
             return 100.0
         elif collision:
             return -100.0
         else:
-            r3 = lambda x: 1 - x if x < 1 else 0.0
-            return action[0] / 2 - abs(action[1]) / 2 - r3(min_laser) / 2
+            linear_velocity = action[0]
+            angular_velocity = action[1]
+            laser_reward = max(0.0, 1.0 - min_laser / max_laser) # penalize when robot is close to obstacles
+            distance_reward = max(0.0, math.cos(math.radians(min_laser * 60)) * math.cos(math.radians(angular_velocity * 60))) # reward for facing the goal direction
+            speed_reward = 0.1 * linear_velocity # encourage higher linear velocity
+            direction_reward = 0.1 * (1 - abs(angular_velocity)) # encourage lower angular velocity
+            success_reward = 10.0 * (1 - abs(min_laser - goal_distance) / goal_distance) # reward for being close to the goal location
+            
+            return laser_reward + distance_reward + speed_reward + direction_reward + success_reward
